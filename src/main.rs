@@ -1,4 +1,3 @@
-#![feature(box_patterns)]
 #![warn(clippy::all)]
 
 mod parse;
@@ -45,15 +44,15 @@ fn read(src: &str) -> Result<Expr, Error> {
 fn eval(e: Expr, table: &mut Table) -> Result<Expr, Error> {
     use Expr::*;
     let e = match e {
-        Unary(op, box n) => {
-            let n = eval(n, table)?;
+        Unary(op, n) => {
+            let n = eval(*n, table)?;
             match (op.as_str(), n) {
                 ("-", Number(n)) => Number(-n),
                 ("not", Bool(b)) => Bool(!b),
                 (op, n) => return Err(error!("cannot apply unary {op} to {n:?}")),
             }
         }
-        Binary(op, box a, box b) => match (op.as_str(), a, b) {
+        Binary(op, a, b) => match (op.as_str(), *a, *b) {
             ("=", Identifier(a), b) => {
                 let b = eval(b, table)?;
                 table.insert(a.to_string(), b);
