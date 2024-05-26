@@ -1,0 +1,93 @@
+# declaration
+n = 42
+greeting = "hello world"
+truth = true
+
+# string formatting
+message = f"i say, '{greeting}'"
+write(message)
+
+# scopes
+x = 5
+do
+    x = 10        # shadowing
+    write(f"{x}") # prints 10
+end
+write(f"{x}")     # prints 5
+
+var y = 1 # y is now variable
+while y < 10 do
+    y = y + 1
+end
+write(f"{y}") # prints 10
+
+# control flow
+is_valid = true
+answer = 5
+if is_valid and answer < 10 then 
+    write("it was true")
+else
+    write("it was false")
+end
+
+line = "hello"
+reply = match line with         # match and if are expressions
+    "hello" then "greetings"    # they evaluate to a value
+    "goodbye" then "farewell"
+    _ then "huh?"
+end
+write(reply)
+
+# loops
+var sum = 1
+loop do
+    if sum > 10 then break end
+    sum = sum + sum
+end
+
+for i in 1..10 do # ranges are open
+    
+end
+
+# lists
+
+
+# types
+n: number = 42.0        # types are typically inferred from usage
+str: text = "text_here" # but can be specified
+
+# functions
+function add(x: number, y: number)  # x and y need types, since otherwise the + operation isn't defined
+    x + y                           # no return needed
+end
+
+# structures
+record message
+    message: text,
+    status_code: number,
+    valid: bool
+end
+
+type token
+    atom(text),
+    op(text),
+    eof
+end
+
+type id is number
+
+# traits
+trait summary
+    
+end
+
+# more literals
+decimal     = 1_000.1
+hex         = 0xffab
+octal       = 0o77
+binary      = 0b1010_0101
+scientific  = 1.2e3
+
+format   = f"number {n}, predicate {p}" # format string
+iso_8601 = r"(\d{4})-(\d{2})-(\d{2})"   # compiled regex
+c_string = c"some data string"          # contains null byte at the end
