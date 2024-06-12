@@ -1,5 +1,23 @@
 # Ferrite
 
+## Usage
+
+* `ferrite`: Print version information and help text.
+  * Options:
+    * `-h`: Print help text.
+    * `-v`: Print version.
+* `ferrite new <name>`: Create a new project.
+* `ferrite build [program]`: Build the current project, or a specific project. 
+* `ferrite run [program]`: Build and run the current project, or a specific project.
+* `ferrite test`: Execute tests in the current project.
+  * Options:
+    * `-u, --unit`: Run only unit tests. 
+    * `-b, --bench`: Run only benchmarks.
+* `ferrite check`: Verify and lint the current project.
+  * Options:
+    * `-f, --format`: Format the current project.
+    * `--lsp`: Start the built-in language server.
+
 ## Syntax
 
 **Comments** are series of characters which are ignored by the compiler, delimited by the pound symbol and ended by a newline.  
@@ -77,22 +95,3 @@ Operators with the same precedence share a row.
 | Logical or                 | Left to right       | `a or b`         |
 | Ranges                     | Require parentheses | `a to b`         |
 | Assignment                 | Right to left       | `a = b`          |
-
-## Command Line Tools
-
-* `ferrite`: Print version information and help text.
-  * Options:
-    * `-h`: Print help text.
-    * `-v`: Print version.
-* `ferrite new <name>`: Create a new project.
-* `ferrite build [program]`: Build the current project, or a specific project. 
-* `ferrite run [program]`: Build and run the current project, or a specific project.
-* `ferrite test`: Execute tests in the current project.
-  * Options:
-    * `-u, --unit`: Run only unit tests. 
-    * `-b, --bench`: Run only benchmarks.
-* `ferrite check`: Verify and lint the current project.
-  * Options:
-    * `-f, --format`: Format the current project.
-    * `--lsp`: Start the built-in language server.
-
