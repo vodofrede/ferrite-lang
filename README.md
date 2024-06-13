@@ -18,64 +18,150 @@
     * `-f, --format`: Format the current project.
     * `--lsp`: Start the built-in language server.
 
+## Overview
+
+### Goals
+
+* Simple, preferably word-based syntax.
+* Batteries-included core library.
+* Immutability by default.
+* Expressiveness:
+  * Pattern matching/destructuring
+  * Lambdas
+* Acceptable performance.
+* Fast (sub-second for smaller projects) build times.
+* Small binaries.
+
+### Non-goals
+
+* Null - use option/either/result instead.
+* Manual memory management.
+* Ownership/lifetime rules and references.
+* Lifetimes and their associated syntax are not desirable.
+* Separate syntax for generics.
+  * Function and record fields are instead expressed as either a single concrete type, or possibly multiple traits. 
+
 ## Syntax
 
 **Comments** are series of characters which are ignored by the compiler, delimited by the pound symbol and ended by a newline.  
-`comment -> '#' .* \n`
+```shell
+comment -> "#" .* \n
+```
 
 **Identifiers** define the names of entities. Valid identifiers are defined in terms of the Unicode XID start and continue sets. Identifiers are allowed to start with an underscore.  
-`id -> (xid_start | '_') xid_continue*`
+```shell
+id -> (xid_start | "_") xid_continue*
+```
 
 **Keywords** are a subset of identifiers which specify program behavior.  
-`keyword -> "var" | "do" | "end" | "if" | "then" | "else" | "loop" | "while" | "for" | "in"`
+```shell
+keyword -> "var" | "do" | "end" | "if" | "then" | "else" | "loop" | "while" | "for" | "in"
+```
 
-**Operators** apply operations to their left and/or right operands. If multiple operator characters exist in a row, they are combined into one operator (such as in the case of '=='). Not all combinations of valid operator characters in a row are valid operators.  
-`op -> ('+' | '-' | '*' | '/' | '%' | '^' | '<' | '>' | '=' | '.' | ':' | '!' | '?')*`
+**Paths** are used for grouping elements.  
+```shell
+path_segment -> id | super | self | package
+path -> path_segment ("." path_segment)*
+```
+
+**Operators** apply operations to their left and/or right operands. If multiple operator characters exist in a row, they are combined into one operator (such as in the case of "=="). Not all combinations of valid operator characters in a row are valid operators.  
+```shell
+op -> ("+" | "-" | "*" | "/" | "%" | "^" | "<" | ">" | "=" | "." | ":" | "!" | "?")*
+```
 
 **Numbers** are integer or floating point literals.  
-`digit -> [0-9]`  
-`number -> digit+ ('.' digit+)?`
+```shell
+digit -> [0-9]
+number -> digit+ ("." digit+)?
+```
 
 **Text** is any amount of unicode characters surrounded by unescaped quotation marks.
 These literals may be prefixed with a single-character text modifier which specifies how the contained text should be interpreted.  
-`text_modifier -> ('f' | 'r' | 'c' | 'b')`  
-`text -> text_modifier? '"' .* '"'`  
+```shell
+text_modifier -> ("f" | "r" | "c" | "b")
+text -> text_modifier? '"' .* '"'
+```  
 
 **Bools** are the entire set of literals allowed in boolean logic.  
-`bool -> "true" | "false"`
+```shell
+bool -> "true" | "false"
+```
 
 **Blocks** are a sequence of expressions which are evaluated in order. Blocks evaluate to the final expression in their body, otherwise the unit type. Blocks shadow their containing scope, meaning that a variable defined in a block will not leak to the outer scope.  
-`block -> "do" expression* "end"`
+```shell
+block -> "do" expression* "end"
+```
 
 **Types** are a separate namespace to identifiers which are used to verify program correctness before runtime. The language contains a few built-in types which form the basis for all other types.  
-`primitive -> "bool" | "number" | "text" | "unit"`
-`type -> primitive | id`
+```shell
+primitive_type -> "bool" | "number" | "text" | "unit"
+type -> primitive_type | id
+```
 
 **Expressions** evaluate to a value and always have a type.  
-`expression -> ?`
+```shell
+expression -> ?
+```
 
-**Declarations** associate an identifier with an expression, which may optionally have a type definition alongside it. Variables are defined by including the "var" keyword before the identifier.  
-`declaration -> "var"? id '=' expression`
+**Patterns** are used to destructure and bind values from structures.  
+```shell
+pattern -> basic_pattern ("or" basic_pattern)*
+basic_pattern -> 
+    literal_pattern 
+  | identifier_pattern 
+  | tuple_pattern
+  | list_pattern
+  | table_pattern
+  | datatype_pattern
+  | record_pattern 
+
+literal_pattern -> bool | number | text | "unit"
+identifier_pattern -> id
+tuple_pattern -> "(" basic_pattern ("," basic_pattern)* ")"
+list_pattern -> "[" basic_pattern ("," basic_pattern)* "]"
+tuple_pattern -> "(" basic_pattern ("," basic_pattern)* ")"
+table_pattern -> "{" basic_pattern ("," basic_pattern)* "}"
+datatype_pattern -> "{" basic_pattern ("," basic_pattern)* "}"
+record_pattern -> path "{" basic_pattern ("," basic_pattern)* "}"
+```
+
+**Assignment** associate an identifier with an expression, which may optionally have a type definition alongside it. Variables are defined by including the "var" keyword before the identifier.  
+```shell
+assignment -> pattern "=" expression
+variable -> "var"? pattern "=" expression
+```
 
 **Lists** are growable homogenous ordered arrays of expressions. Lists may only contain elements of the same type.   
-`list -> '[' expression (',' expression)* ']'`
+```shell
+list -> "[" expression ("," expression)* "]"
+```
 
 **Sequences** are finite heterogenous ordered lists. Sequences may contain elements of differing types, but may not dynamically grow in size.  
-`sequence -> '(' expression (',' expression)* ')'`
+```shell
+sequence -> "(" expression ("," expression)* ")"
+```
 
 **Tables** are growable, heterogenous associative arrays over expressions.  
-`table_element -> expression = expression`  
-`table -> '[' table_element (',' table_element)* ']'`
+```shell
+table_element -> expression = expression
+table -> "[" table_element ("," table_element)* "]"
+```
 
-**Type definitions** are tagged unions (sum types).  
-`type_definition -> "type" id type (, type)* "end"`
+**Datatypes** are tagged unions (sum types).  
+```shell
+datatype -> "type" id type (, type)* "end"
+```
 
 **Records** are a heterogenous collection of fields.  
-`field -> id ':' type`
-`record -> "record" id field (',' field)* "end"`
+```shell
+field -> id ":" type
+record -> "record" id field ("," field)* "end"
+```
 
 **Traits** define the functionality of a particular type.  
-`trait -> trait `
+```shell
+trait -> "trait"
+```
 
 ## Associativity & Precedence
 
@@ -86,7 +172,7 @@ Operators with the same precedence share a row.
 | -------------------------- | ------------------- | ---------------- |
 | Grouping                   |                     | `(a + b) * c`    |
 | Indexing                   | Left to right       | `a.b`            |
-| Unary negation/logical not |                     | `-a`, `!a`       |
+| Unary negation/logical not | Right to left       | `-a`, `!a`       |
 | Multiplication/division    | Left to right       | `a * b`, `a / b` |
 | Addition/subtraction       | Left to right       | `a + b`, `a - b  |
 | Equality                   | Require parentheses | `a == b`         |
