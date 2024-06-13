@@ -1,0 +1,34 @@
+{
+    "name": "vscode-ferrite",
+    "displayName": "vscode-ferrite",
+    "description": "Language support for the Ferrite programming language.",
+    "version": "0.1.0",
+    "engines": {
+        "vscode": "^1.90.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [
+            {
+                "id": "ferrite",
+                "aliases": [
+                    "Ferrite",
+                    "ferrite"
+                ],
+                "extensions": [
+                    ".fr"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "ferrite",
+                "scopeName": "source.ferrite",
+                "path": "./syntaxes/ferrite.tmLanguage.json"
+            }
+        ]
+    }
+}

@@ -1,0 +1,60 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Ferrite",
+	"patterns": [
+		{
+			"include": "#keywords"
+		},
+		{
+			"include": "#comments"
+		},
+		{
+			"include": "#literals"
+		},
+		{
+			"include": "#types"
+		}
+	],
+	"repository": {
+		"keywords": {
+			"patterns": [
+				{
+					"name": "keyword.control.ferrite",
+					"match": "\\b(var|do|end|match|if|then|else|while|for|in|to|function|return)\\b"
+				}
+			]
+		},
+		"comments": {
+			"name": "comment.line.number-sign.ferrite",
+			"begin": "#",
+			"end": "\n"
+		},
+		"literals": {
+			"patterns": [
+				{
+					"name": "constant.language.bool.ferrite",
+					"match": "\\b(true|false)\\b"
+				},
+				{
+					"name": "constant.numeric.number.ferrite",
+					"match": "\\b\\d+(\\.\\d+)?\\b"
+				},
+				{
+					"name": "string.quoted.double.ferrite",
+					"begin": "\"",
+					"end": "\"",
+					"patterns": [
+						{
+							"name": "constant.character.escape.ferrite",
+							"match": "\\\\."
+						}
+					]
+				}
+			]
+		},
+		"types": {
+			"patterns": []
+		}
+	},
+	"scopeName": "source.ferrite"
+}
