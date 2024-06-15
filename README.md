@@ -2,7 +2,7 @@
 
 Ferrite is a small, expressive language meant for creating applications.
 
-Visit [tour.fr](examples/tour.fr) for a quick rundown of the syntax, constructs and other details of the language.
+Visit [examples/tour.fr](examples/tour.fr) for a quick rundown of the syntax, constructs and other details of the language.
 
 ## Usage
 
