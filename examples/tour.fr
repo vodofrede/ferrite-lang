@@ -1,0 +1,157 @@
+# assignment
+n = 10
+greeting = "hello world"
+truth = true
+
+# text
+message = f"the greeting is {greeting}"
+write(message)
+
+# scopes
+x = 5
+do
+    x = 10   # shadows the previous value of 'x'
+    write(x) # prints 10
+end
+write(x)     # prints 5
+
+# variables
+var y = 1 # y is now variable
+do
+    y = 2
+end
+write(y) # prints 2
+
+# control flow
+is_valid = true
+answer = 5
+if is_valid and answer < 10 then 
+    write("it was true")
+else
+    write("it was false")
+end
+
+# pattern matching
+line = "hello"
+reply = match line with
+    "hello" then "greetings"
+    "goodbye" then "farewell"
+    _ then "huh?"
+end
+write(reply)
+
+# loops
+var sum = 1
+while sum < 10 do
+    sum = sum + sum
+end
+
+# types
+n: number = 42.0        # types are typically inferred from usage
+str: text = "text_here" # but can be specified
+
+# functions
+function add(x: number, y: number)  # x and y need types, since otherwise the + operation isn't defined
+    x + y                           # no return needed
+end
+
+# lists
+list = [1, 2, 3]
+second_element = list.2
+
+texts = ["are", "you", "having", "a", "good", "day", "?"]
+for text in texts do
+    write(f"{text} ")
+end
+
+sum = list.sum()
+write(sum) # prints 6
+
+# tuples
+result = (42, "life", true)
+(n, t, b) = result # destructuring
+
+# types
+type expr is
+    atom(number),
+    op(text, expr, expr)
+end
+
+function eval(expr: expr) -> number 
+    match expr with
+        expr.atom(n) then n,
+        expr.op(op, a, b) then match op with 
+            "+" then eval(a) + eval(b),
+            "-" then eval(a) - eval(b),
+            "*" then eval(a) * eval(b),
+            "/" then eval(a) / eval(b)
+        end
+    end
+end
+
+# records
+type id is number
+record message is
+    id: id,
+    message: text,
+    status_code: number,
+    is_valid: bool
+end
+
+function message.check(self: message)
+    if not self.is_valid then
+        return
+    end
+    match self.status_code with
+        200 then write(f"OK: {self.message}")
+        other then write(f"unhandled status code: {other}")
+    end
+end
+
+# traits
+record book is
+    title: text,
+    description: text
+end
+record article is
+    title: text,
+    byline: text
+end
+
+trait summary is
+    function name(self) -> text
+    function description(self) -> text
+end
+
+record book has summary
+    function name(self) -> text self.title end
+    function description(self) -> text self.description end
+end
+record article has summary
+    function name(self) -> text self.title end
+    function description(self) -> text self.byline end
+end
+
+function summarize(thing: summary) 
+    name = thing.name()
+    description = thing.description()
+    write(f"{name}: {description}")
+end
+summarize(book(title = "Crafting Interpreters", description = "A book about making interpreters."))
+summarize(article(title = "Cool Programming", abstract = "10 features you won't believe exist."))
+
+# more literals
+decimal     = 1_000.1
+hex         = 0xffab
+octal       = 0o77
+binary      = 0b1010_0101
+scientific  = 1.2e3
+
+format   = f"number {n}, predicate {p}" # format string
+iso_8601 = r"(\d{4})-(\d{2})-(\d{2})"   # compiled regex
+c_string = c"some data string"          # contains null byte at the end
+
+# ranges
+range = 1 to 5          # [1, 2, 3, 4, 5]
+range_from = 1 to _     # [1, 2, 3, ...]
+range_to = _ to 5       # [..., 3, 4, 5]

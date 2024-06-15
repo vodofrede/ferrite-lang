@@ -37,9 +37,9 @@
 * Null - use option/either/result instead.
 * Manual memory management.
 * Ownership/lifetime rules and references.
-* Lifetimes and their associated syntax are not desirable.
+* Lifetimes.
 * Separate syntax for generics.
-  * Function and record fields are instead expressed as either a single concrete type, or possibly multiple traits. 
+  * Function parameters and record fields are instead expressed as either a single concrete type or possibly one or more traits.  
 
 ## Syntax
 
@@ -48,14 +48,19 @@
 comment -> "#" .* \n
 ```
 
-**Identifiers** define the names of entities. Valid identifiers are defined in terms of the Unicode XID start and continue sets. Identifiers are allowed to start with an underscore.  
+**Spaces** are any characters which fall under general category of 'whitespace'. These are unilaterally ignored by the compiler, except during formatting.
+```shell
+space -> " " | "\r" | "\n" | "\t" 
+```
+
+**Identifiers** define the names of entities. Valid identifiers are defined in terms of the [Unicode XID](https://www.unicode.org/reports/tr31/tr31-39.html#D1) start and continue sets. Identifiers are allowed to start with an underscore.  
 ```shell
 id -> (xid_start | "_") xid_continue*
 ```
 
 **Keywords** are a subset of identifiers which specify program behavior.  
 ```shell
-keyword -> "var" | "do" | "end" | "if" | "then" | "else" | "loop" | "while" | "for" | "in"
+keyword -> "var" | "do" | "end" | "match" | "if" | "then" | "else" | "loop" | "while" | "for" | "in" | "to" | "function" | "return" | "type" | "record" | "trait"
 ```
 
 **Paths** are used for grouping elements.  

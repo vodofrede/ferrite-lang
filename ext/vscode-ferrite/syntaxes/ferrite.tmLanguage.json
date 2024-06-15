@@ -20,7 +20,7 @@
 			"patterns": [
 				{
 					"name": "keyword.control.ferrite",
-					"match": "\\b(var|do|end|match|if|then|else|loop|while|for|in|to|function|return|record|type|trait)\\b"
+					"match": "\\b(var|do|end|match|with|if|then|else|loop|while|for|in|to|function|return|is|record|type|trait|has)\\b"
 				}
 			]
 		},
@@ -57,7 +57,24 @@
 			"match": "\\b(and|or)\\b"
 		},
 		"types": {
-			"patterns": []
+			"patterns": [
+				{
+					"name": "entity.name.type.primitive.ferrite",
+					"match": "\\b(bool|number|text)\\b"
+				},
+				{
+					"name": "entity.name.type.datatype.ferrite",
+					"match": "\\btype\\s+([a-zA-Z_][0-9a-zA-Z_]*)\\b"
+				},
+				{
+					"name": "entity.name.type.record.ferrite",
+					"match": "\\brecord\\s+([a-zA-Z_][0-9a-zA-Z_]*)\\b"
+				},
+				{
+					"name": "entity.name.type.trait.ferrite",
+					"match": "\\btrait\\s+([a-zA-Z_][0-9a-zA-Z_]*)\\b"
+				}
+			]
 		}
 	},
 	"scopeName": "source.ferrite"
