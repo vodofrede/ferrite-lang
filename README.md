@@ -1,5 +1,9 @@
 # Ferrite
 
+Ferrite is a small, expressive language meant for creating applications.
+
+Visit [tour.fr](examples/tour.fr) for a quick rundown of the syntax, constructs and other details of the language.
+
 ## Usage
 
 * `ferrite`: Print version information and help text.
@@ -22,6 +26,8 @@
 
 ### Goals
 
+These may or may not already be in the language.
+
 * Simple, preferably word-based syntax.
 * Batteries-included core library.
 * Immutability by default.
@@ -31,8 +37,12 @@
 * Acceptable performance.
 * Fast (sub-second for smaller projects) build times.
 * Small binaries.
+* Easy foreign function interfaces (FFI) - enabling library code in faster languages, especially C.
+* WebAssembly as a tier 1 compilation target.
 
-### Non-goals
+### Obstacles
+
+These are non-goals - things that will not be added to the language.
 
 * Null - use option/either/result instead.
 * Manual memory management.
