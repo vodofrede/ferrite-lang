@@ -1,25 +1,26 @@
-# declaration
+# assignment
 n = 42
 greeting = "hello world"
 truth = true
 
-# string formatting
-message = f"i say, '{greeting}'"
+# text formatting
+message = f"i say {greeting} to you!"
 write(message)
 
 # scopes
 x = 5
 do
-    x = 10        # shadowing
-    write(f"{x}") # prints 10
+    x = 10   # shadows the previous value of 'x'
+    write(x) # prints 10
 end
-write(f"{x}")     # prints 5
+write(x)     # prints 5
 
+# variables
 var y = 1 # y is now variable
-while y < 10 do
-    y = y + 1
+do
+    y = 2
 end
-write(f"{y}") # prints 10
+write(y) # prints 2
 
 # control flow
 is_valid = true
@@ -30,9 +31,10 @@ else
     write("it was false")
 end
 
+# pattern matching
 line = "hello"
-reply = match line with         # match and if are expressions
-    "hello" then "greetings"    # they evaluate to a value
+reply = match line
+    "hello" then "greetings"
     "goodbye" then "farewell"
     _ then "huh?"
 end
@@ -40,17 +42,13 @@ write(reply)
 
 # loops
 var sum = 1
-loop do
-    if sum > 10 then break end
+while sum < 10 do
     sum = sum + sum
 end
 
-for i in 1..10 do # ranges are open
+for i in 1 to 10 do # ranges are open
     
 end
-
-# lists
-
 
 # types
 n: number = 42.0        # types are typically inferred from usage
@@ -60,6 +58,21 @@ str: text = "text_here" # but can be specified
 function add(x: number, y: number)  # x and y need types, since otherwise the + operation isn't defined
     x + y                           # no return needed
 end
+
+# lists
+list = [1, 2, 3]
+second_element = list.2
+
+texts = ["are", "you", "having", "a", "good", "day", "?"]
+for text in texts do
+    write(f"{text} ")
+end
+
+sum = list.sum()
+write(sum) # prints 6
+
+# tuples
+result = (42, "life", true)
 
 # structures
 record message
@@ -74,7 +87,7 @@ type token
     eof
 end
 
-type id is number
+type id number
 
 # traits
 trait summary
@@ -91,3 +104,7 @@ scientific  = 1.2e3
 format   = f"number {n}, predicate {p}" # format string
 iso_8601 = r"(\d{4})-(\d{2})-(\d{2})"   # compiled regex
 c_string = c"some data string"          # contains null byte at the end
+
+range = 1 to 5 # [1, 2, 3, 4, 5]
+range_from = 1 to _  # [1, 2, 3...]
+range_to = 

@@ -20,7 +20,7 @@
 			"patterns": [
 				{
 					"name": "keyword.control.ferrite",
-					"match": "\\b(var|do|end|match|if|then|else|while|for|in|to|function|return)\\b"
+					"match": "\\b(var|do|end|match|if|then|else|loop|while|for|in|to|function|return|record|type|trait)\\b"
 				}
 			]
 		},
@@ -51,6 +51,10 @@
 					]
 				}
 			]
+		},
+		"operators": {
+			"name": "keyword.operator.ferrite",
+			"match": "\\b(and|or)\\b"
 		},
 		"types": {
 			"patterns": []

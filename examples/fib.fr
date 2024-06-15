@@ -1,0 +1,21 @@
+# recursive fibonacci
+function fib(n: number) -> number 
+    match n 
+        0 or 1 then n
+        n then fib(n - 2) + fib(n - 1)
+    end
+end
+
+# dynamic fibonacci 
+function fib(n: number) -> number 
+    (a, b) = (0, 1)
+    for i in 0 to n do
+        (a, b) = (b, a + b)
+    end
+    a
+end
+
+# functional fibonacci
+function fib(n: number) -> number
+    (0 to n).fold((0, 1), function((a, b)) (b, a + b)).1
+end

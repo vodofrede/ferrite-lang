@@ -2,9 +2,13 @@
     "name": "vscode-ferrite",
     "displayName": "vscode-ferrite",
     "description": "Language support for the Ferrite programming language.",
+    "publisher": "vodofrede",
     "version": "0.1.0",
+    "repository": {
+        "url": "https://github.com/vodofrede/ferrite-lang"
+    },
     "engines": {
-        "vscode": "^1.90.0"
+        "vscode": "^1.89.0"
     },
     "categories": [
         "Programming Languages"
