@@ -1,16 +1,12 @@
+use crate::Span;
 use unicode_ident::{is_xid_continue, is_xid_start};
 
 pub fn tokens(src: &str) -> Tokens {
-    Tokens {
-        src,
-        line: 1,
-        column: 1,
-    }
+    Tokens { src, index: 0 }
 }
 pub struct Tokens<'a> {
     src: &'a str,
-    line: usize,
-    column: usize,
+    index: usize,
 }
 impl<'a> Iterator for Tokens<'a> {
     type Item = Token<'a>;
@@ -18,19 +14,15 @@ impl<'a> Iterator for Tokens<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         const KEYWORDS: &[&str] = &["var", "do", "end", "if", "then", "else"];
         const OPERATORS: &str = "+-*/%^<>=.:!";
-        const SEPARATORS: &str = "()[]";
+        const GROUPING: &str = "()[]";
 
         use Kind::*;
         let (kind, text) = match char_at(self.src, 0)? {
             '#' => (Comment, scan(self.src, |c| c != '\n')),
-            '\n' => {
-                self.column = 0;
-                self.line += 1;
-                (Break, &self.src[..1])
-            }
+            '\n' => (Break, &self.src[..1]),
             c if c.is_whitespace() => (Space, scan(self.src, |c| c.is_whitespace() && c != '\n')),
             c if OPERATORS.contains(c) => (Operator, scan(self.src, |c| OPERATORS.contains(c))),
-            c if SEPARATORS.contains(c) => (Separator, scan(self.src, |c| SEPARATORS.contains(c))),
+            c if GROUPING.contains(c) => (Grouping, scan(self.src, |c| GROUPING.contains(c))),
             c if c.is_ascii_digit() => {
                 let mut found_dot = false;
                 let text = scan(self.src, |c| {
@@ -41,26 +33,24 @@ impl<'a> Iterator for Tokens<'a> {
                 (Number, text)
             }
             '"' => (Text, scan(self.src, |c| c != '"')), // needs +1 char at the end
-            c if is_xid_start(c) => match scan(self.src, is_xid_continue) {
+            c @ '_' | c if is_xid_start(c) => match scan(self.src, is_xid_continue) {
                 text @ "true" | text @ "false" => (Bool, text),
-                text @ "and" | text @ "or" => (Operator, text),
+                text @ "and" | text @ "or" | text @ "not" => (Operator, text),
                 text if KEYWORDS.contains(&text) => (Keyword, text),
                 text => (Identifier, text),
             },
             c => {
-                eprintln!("unhandled token: {c:?}");
+                eprintln!("syntax error: unhandled token: {c:?}");
                 return None;
             }
         };
 
         let len = text.len();
         let span = Span {
-            line: self.line,
-            column: self.column,
+            start: self.index,
             len,
         };
-
-        self.column += len;
+        self.index += len;
         self.src = &self.src[len..];
 
         match kind {
@@ -97,16 +87,10 @@ pub enum Kind {
     Break,
     Comment,
     Operator,
-    Separator,
+    Grouping,
     Number,
     Text,
     Bool,
     Identifier,
     Keyword,
-}
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Span {
-    pub line: usize,
-    pub column: usize,
-    pub len: usize,
 }

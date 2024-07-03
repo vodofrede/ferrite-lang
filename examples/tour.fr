@@ -16,10 +16,8 @@ end
 write(x)     # prints 5
 
 # variables
-var y = 1 # y is now variable
-do
-    y = 2
-end
+var y = 1       # y is now variable, which means that assigning to y will alter its value instead of shadowing
+do y = 2 end
 write(y) # prints 2
 
 # control flow
@@ -32,8 +30,8 @@ else
 end
 
 # pattern matching
-line = "hello"
-reply = match line with
+input = read()
+reply = match input with
     "hello" then "greetings"
     "goodbye" then "farewell"
     _ then "huh?"
@@ -47,8 +45,8 @@ while sum < 10 do
 end
 
 # types
-n: number = 42.0        # types are typically inferred from usage
-str: text = "text_here" # but can be specified
+n: number = 42.0        # types are always inferred from usage
+str: text = "text here" # but can be specified
 
 # functions
 function add(x: number, y: number)  # x and y need types, since otherwise the + operation isn't defined
@@ -90,23 +88,20 @@ function eval(expr: expr) -> number
 end
 
 # records
-type id is number
 record message is
-    id: id,
     message: text,
     status_code: number,
-    is_valid: bool
 end
 
 function message.check(self: message)
-    if not self.is_valid then
-        return
-    end
     match self.status_code with
         200 then write(f"OK: {self.message}")
         other then write(f"unhandled status code: {other}")
     end
 end
+
+msg = message(message = "cool stuff", status_code = 200)
+msg.check()
 
 # traits
 record book is

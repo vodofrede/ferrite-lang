@@ -1,6 +1,6 @@
 # Ferrite
 
-Ferrite is a small, expressive language meant for creating applications.
+Ferrite is a small, expressive language for creating applications.
 
 Visit [examples/tour.fr](examples/tour.fr) for a quick rundown of the syntax, constructs and other details of the language.
 
@@ -29,6 +29,7 @@ Visit [examples/tour.fr](examples/tour.fr) for a quick rundown of the syntax, co
 These may or may not already be in the language.
 
 * Simple, preferably word-based syntax.
+* Strong, static typing.
 * Batteries-included core library.
 * Immutability by default.
 * Expressiveness:

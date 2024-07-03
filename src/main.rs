@@ -1,106 +1,103 @@
 #![warn(clippy::all)]
 
+mod ir;
 mod parse;
 mod token;
+mod wasm;
 
 use crate::{parse::*, token::*};
 use std::{
-    collections, env, error, fmt, fs,
+    env, error, fmt, fs,
     io::{prelude::*, stdin, stdout},
 };
 
 fn main() -> Result<(), Box<dyn error::Error>> {
     let args = env::args().collect::<Vec<_>>();
-    match args.as_slice() {
-        [_, file, ..] => {
-            let src = fs::read_to_string(file)?;
-            let ast = read(&src)?;
-            let res = eval(ast, &mut Table::new())?;
-            println!("{res:?}");
-            Ok(())
-        }
-        _ => prompt(Table::new()),
-    }
-}
-fn prompt(mut table: Table) -> Result<(), Box<dyn error::Error>> {
-    println!("{} v{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
-    let (stdin, mut stdout) = (stdin(), stdout());
-    let mut input = String::new();
-    loop {
-        print!("> ");
-        stdout.flush()?;
-        input.clear();
-        stdin.read_line(&mut input)?;
-        let Ok(ast) = read(&input) else { continue };
-        let Ok(res) = eval(ast, &mut table) else {
-            continue;
-        };
+    if let [_, file, ..] = args.as_slice() {
+        let src = fs::read_to_string(file)?;
+        let ast = parse(tokens(&src))?;
+        let res = eval(ast, &mut Table::new()).inspect_err(|e| eprintln!("runtime error: {e}"))?;
         println!("{res:?}");
+        // let ir = lower(ast)?;
+        // let bin = dump(ir);
+        // fs::write(Path::new(file).with_extension("wasm"), bin)?;
+    } else {
+        println!("{} v{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+        let (stdin, mut stdout) = (stdin(), stdout());
+        let mut lines = stdin.lock().lines();
+        loop {
+            print!("> ");
+            stdout.flush()?;
+            let src = lines.next().unwrap()?;
+            let Ok(ast) = parse(tokens(&src)) else {
+                continue;
+            };
+            let Ok(res) =
+                eval(ast, &mut Table::new()).inspect_err(|e| eprintln!("runtime error: {e}"))
+            else {
+                continue;
+            };
+            println!("{res:?}");
+        }
     }
+    Ok(())
 }
-fn read(src: &str) -> Result<Expr, Error> {
-    parse(tokens(src))
+
+type Table<'a> = std::collections::HashMap<&'a str, Value>;
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+enum Value {
+    Unit,
+    Bool(bool),
+    Number(f64),
+    Text(String),
 }
-fn eval(e: Expr, table: &mut Table) -> Result<Expr, Error> {
-    use Expr::*;
-    let e = match e {
-        Unary(op, n) => {
-            let n = eval(*n, table)?;
-            match (op.as_str(), n) {
-                ("-", Number(n)) => Number(-n),
-                ("not", Bool(b)) => Bool(!b),
-                (op, n) => return Err(error!("cannot apply unary {op} to {n:?}")),
+fn eval<'a>(e: Expr<'a>, table: &mut Table<'a>) -> Result<Value, Error> {
+    let value = match e.item {
+        Item::Bool(b) => Value::Bool(b),
+        Item::Number(n) => Value::Number(n),
+        Item::Text(t) => Value::Text(t.to_string()),
+        Item::Identifier(id) => table.get(id).cloned().ok_or(error!("unbound identifier"))?,
+        Item::Unary(op, n) => match (op, n.item) {
+            ("-", Item::Number(n)) => Value::Number(-n),
+            ("not", Item::Bool(b)) => Value::Bool(!b),
+            (_, n) => return Err(error!("cannot apply unary {op} to {:?}", n)),
+        },
+        Item::Binary(op, a, b) => {
+            if let ("=", Item::Identifier(a), _) = (op, &a.item, &b) {
+                let value = eval(*b, table)?;
+                table.insert(a, value.clone());
+                return Ok(value);
+            }
+            match (op, eval(*a, table)?, eval(*b, table)?) {
+                ("+", Value::Number(a), Value::Number(b)) => Value::Number(a + b),
+                ("-", Value::Number(a), Value::Number(b)) => Value::Number(a - b),
+                ("*", Value::Number(a), Value::Number(b)) => Value::Number(a * b),
+                ("/", Value::Number(a), Value::Number(b)) => Value::Number(a / b),
+                ("^", Value::Number(a), Value::Number(b)) => Value::Number(a.powf(b)),
+                ("==", Value::Number(a), Value::Number(b)) => Value::Bool(a == b),
+                (">", Value::Number(a), Value::Number(b)) => Value::Bool(a > b),
+                ("<", Value::Number(a), Value::Number(b)) => Value::Bool(a < b),
+                (">=", Value::Number(a), Value::Number(b)) => Value::Bool(a >= b),
+                ("<=", Value::Number(a), Value::Number(b)) => Value::Bool(a <= b),
+                ("==", Value::Bool(a), Value::Bool(b)) => Value::Bool(a == b),
+                ("and", Value::Bool(a), Value::Bool(b)) => Value::Bool(a && b),
+                ("or", Value::Bool(a), Value::Bool(b)) => Value::Bool(a || b),
+                (_, a, b) => return Err(error!("cannot apply binary {op} to {:?} and {:?}", a, b)),
             }
         }
-        Binary(op, a, b) => match (op.as_str(), *a, *b) {
-            ("=", Identifier(a), b) => {
-                let b = eval(b, table)?;
-                table.insert(a.to_string(), b);
-                Unit
-            }
-            (op, a, b) => {
-                let a = eval(a, table)?;
-                let b = eval(b, table)?;
-                match (op, a, b) {
-                    ("+", Number(a), Number(b)) => Number(a + b),
-                    ("-", Number(a), Number(b)) => Number(a - b),
-                    ("*", Number(a), Number(b)) => Number(a * b),
-                    ("/", Number(a), Number(b)) => Number(a / b),
-                    ("%", Number(a), Number(b)) => Number(a % b),
-                    ("^", Number(a), Number(b)) => Number(a.powf(b)),
-
-                    ("==", Number(a), Number(b)) => Bool(a == b),
-                    ("!=", Number(a), Number(b)) => Bool(a != b),
-                    (">", Number(a), Number(b)) => Bool(a > b),
-                    ("<", Number(a), Number(b)) => Bool(a < b),
-                    (">=", Number(a), Number(b)) => Bool(a >= b),
-                    ("<=", Number(a), Number(b)) => Bool(a <= b),
-
-                    ("==", Bool(a), Bool(b)) => Bool(a == b),
-                    ("!=", Bool(a), Bool(b)) => Bool(a != b),
-                    ("and", Bool(a), Bool(b)) => Bool(a && b),
-                    ("or", Bool(a), Bool(b)) => Bool(a || b),
-
-                    (op, a, b) => return Err(error!("cannot apply {op} to {a:?} and {b:?}")),
-                }
-            }
-        },
-        Identifier(id) => table
-            .get(&id)
-            .ok_or(error!("undefined variable {id}"))?
-            .clone(),
-        Block(es) => {
+        Item::Block(bl) => {
             let mut local = table.clone();
-            es.into_iter()
+            bl.into_iter()
                 .map(|e| eval(e, &mut local))
                 .last()
-                .unwrap_or(Ok(Unit))?
+                .unwrap_or(Ok(Value::Unit))?
         }
-        e => e,
+        Item::Variable(_, _) => todo!(),
+        Item::Loop() => todo!(),
     };
-    Ok(e)
+    Ok(value)
 }
-type Table = collections::HashMap<String, Expr>;
 
 #[derive(Debug, Clone)]
 pub struct Error {
@@ -117,7 +114,7 @@ impl error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Some(span) = self.span {
-            write!(f, "{} at {}:{}", self.msg, span.line, span.column)
+            write!(f, "{} at index {}", self.msg, span.start)
         } else {
             write!(f, "{}", self.msg)
         }
@@ -131,4 +128,18 @@ macro_rules! error {
             span: None
         }
     };
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Span {
+    pub start: usize,
+    pub len: usize,
+}
+impl Span {
+    pub fn merge(&self, other: Self) -> Self {
+        let start = self.start.min(other.start);
+        let end = (self.start + self.len).max(other.start + other.len);
+        let len = end - start;
+        Span { start, len }
+    }
 }
