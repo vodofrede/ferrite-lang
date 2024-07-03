@@ -1,28 +1,28 @@
-use crate::{error, Error, Kind, Span, Token, Tokens};
-use std::{fmt, iter::Peekable};
+use crate::{error, Error, Kind, Token, Tokens};
+use std::iter::Peekable;
 
 pub fn parse(tokens: Tokens) -> Result<Expr, Error> {
     let mut tokens = tokens.peekable();
-    let root = Expr {
-        item: block(&mut tokens, None).inspect_err(|e| eprintln!("parsing error: {e}"))?,
-        span: Span { start: 0, len: 0 },
-    };
+    let root = block(&mut tokens, None).inspect_err(|e| eprintln!("parsing error: {e}"))?;
     ty(&root, &mut Env::new()).inspect_err(|e| eprintln!("type error: {e}"))?;
     Ok(root)
 }
 
-fn primary<'a>(tokens: &mut Peekable<Tokens<'a>>) -> Result<Expr<'a>, Error> {
+fn primary(tokens: &mut Peekable<Tokens>) -> Result<Expr, Error> {
     let token = tokens.next().ok_or(error!("unexpected eof"))?;
-    let item = match token.kind {
-        Kind::Number => Item::Number(token.text.parse().unwrap()),
-        Kind::Text => Item::Text(token.text),
-        Kind::Bool => Item::Bool(token.text.parse().unwrap()),
-        Kind::Identifier => Item::Identifier(token.text),
+    let expr = match token.kind {
+        Kind::Number => Expr::Number(token.text.parse().unwrap()),
+        Kind::Text => Expr::Text(token.text.to_string()),
+        Kind::Bool => Expr::Bool(token.text.parse().unwrap()),
+        Kind::Identifier => Expr::Identifier(token.text.to_string()),
         Kind::Operator => {
             let power = prefix_power(token.text)
                 .ok_or(error!("{:?} is not a unary operator", token.text).span(token.span))?;
             let right = expression(tokens, power)?;
-            Item::Unary(token.text, Box::new(right))
+            Expr::Unary {
+                op: token.text.to_string(),
+                expr: Box::new(right),
+            }
         }
         Kind::Grouping => {
             // group -> '(' expr ')'
@@ -40,7 +40,7 @@ fn primary<'a>(tokens: &mut Peekable<Tokens<'a>>) -> Result<Expr<'a>, Error> {
                 let left = expression(tokens, 0)?;
                 expect(tokens, "=")?;
                 let right = expression(tokens, 0)?;
-                Item::Variable(Box::new(left), Box::new(right))
+                Expr::Variable(Box::new(left), Box::new(right))
             }
             "if" => todo!(),
             "match" => todo!(),
@@ -56,10 +56,9 @@ fn primary<'a>(tokens: &mut Peekable<Tokens<'a>>) -> Result<Expr<'a>, Error> {
         },
         _ => return Err(error!("unexpected token {:?}", token.text).span(token.span)),
     };
-    let span = token.span;
-    Ok(Expr { item, span })
+    Ok(expr)
 }
-fn expression<'a>(tokens: &mut Peekable<Tokens<'a>>, min_power: usize) -> Result<Expr<'a>, Error> {
+fn expression(tokens: &mut Peekable<Tokens>, min_power: usize) -> Result<Expr, Error> {
     let mut left = primary(tokens)?;
 
     loop {
@@ -76,24 +75,24 @@ fn expression<'a>(tokens: &mut Peekable<Tokens<'a>>, min_power: usize) -> Result
         tokens.next().unwrap();
 
         let right = expression(tokens, right_power)?;
-        let span = left.span.merge(right.span);
-        left = Expr {
-            item: Item::Binary(op, Box::new(left), Box::new(right)),
-            span,
+        left = Expr::Binary {
+            op: op.to_string(),
+            lhs: Box::new(left),
+            rhs: Box::new(right),
         };
     }
 
     Ok(left)
 }
-fn block<'a>(tokens: &mut Peekable<Tokens<'a>>, end: Option<&str>) -> Result<Item<'a>, Error> {
+fn block(tokens: &mut Peekable<Tokens>, end: Option<&str>) -> Result<Expr, Error> {
     let mut es = vec![];
     while let Some(token) = tokens.peek() {
-        if end.map_or(false, |text| text == token.text) {
+        if end.is_some_and(|text| text == token.text) {
             break;
         }
         es.push(expression(tokens, 0)?);
     }
-    Ok(Item::Block(es))
+    Ok(Expr::Block(es))
 }
 fn expect<'a>(tokens: &mut Peekable<Tokens<'a>>, text: &'a str) -> Result<Token<'a>, Error> {
     let token = tokens.next().ok_or(error!("unexpected eof"))?;
@@ -125,81 +124,117 @@ fn prefix_power(op: &str) -> Option<usize> {
     Some(power)
 }
 
-#[derive(Clone)]
-pub struct Expr<'a> {
-    pub item: Item<'a>,
-    pub span: Span,
-}
 #[derive(Debug, Clone)]
-pub enum Item<'a> {
+pub enum Expr {
     Bool(bool),
     Number(f64),
-    Text(&'a str),
-    Identifier(&'a str),
-    Unary(&'a str, Box<Expr<'a>>),
-    Binary(&'a str, Box<Expr<'a>>, Box<Expr<'a>>),
-    Block(Vec<Expr<'a>>),
-    Variable(Box<Expr<'a>>, Box<Expr<'a>>),
+    Text(String),
+    Identifier(String),
+    List(Vec<Expr>),
+    Seq(Vec<Expr>),
+    Table(),
+    Pattern(),
+    Block(Vec<Expr>),
+    Unary {
+        op: String,
+        expr: Box<Expr>,
+    },
+    Binary {
+        op: String,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
     If {
-        expr: Box<Expr<'a>>,
-        yes: Box<Expr<'a>>,
-        no: Box<Expr<'a>>,
+        cond: Box<Expr>,
+        yes: Box<Expr>,
+        no: Box<Expr>,
     },
     Match {
-        expr: Box<Expr<'a>>,
-        arms: Vec<(Expr<'a>, Expr<'a>)>,
+        expr: Box<Expr>,
+        arms: Vec<(Expr, Expr)>,
     },
-    Loop(Box<Expr<'a>>),
-    While(Box<Expr<'a>>, Box<Expr<'a>>),
-    For(Box<Expr<'a>>, Box<Expr<'a>>, Box<Expr<'a>>),
-    Function(),
-    Return(),
-    Type(),
-    Record(),
-    Trait(),
+    Loop {
+        body: Box<Expr>,
+    },
+    While {
+        cond: Box<Expr>,
+        body: Box<Expr>,
+    },
+    For {
+        id: String,
+        iter: Box<Expr>,
+        body: Box<Expr>,
+    },
+    // expression statements
+    Variable(Box<Expr>, Box<Expr>),
+    Break,
+    Return(Pattern),
+    Function {},
+    Type {},
+    Record {},
+    Trait {},
 }
+#[derive(Debug, Clone)]
+pub enum Pattern {}
 
-type Env<'a> = std::collections::HashMap<&'a str, &'a str>;
-pub fn ty<'a>(expr: &'a Expr, env: &mut Env<'a>) -> Result<&'a str, Error> {
-    let ty = match &expr.item {
-        Item::Bool(_) => "bool",
-        Item::Number(_) => "number",
-        Item::Text(_) => "text",
-        Item::Identifier(id) => env.get(id).ok_or(error!("unbound identifier"))?,
-        Item::Unary(_, n) => ty(n, env)?,
-        Item::Binary(op, first, second) => {
-            if let ("=", Item::Identifier(a)) = (*op, first.item.clone()) {
-                let t = ty(second, env)?;
-                env.insert(a, t);
+type Env = std::collections::HashMap<String, String>;
+pub fn ty(expr: &Expr, env: &mut Env) -> Result<String, Error> {
+    let ty = match expr {
+        Expr::Bool(_) => String::from("bool"),
+        Expr::Number(_) => String::from("number"),
+        Expr::Text(_) => String::from("text"),
+        Expr::Identifier(id) => env.get(id).ok_or(error!("unbound identifier"))?.clone(),
+        Expr::List(es) => {
+            let types = es
+                .iter()
+                .map(|p| ty(p, env))
+                .collect::<Result<Vec<_>, _>>()?;
+            types
+                .windows(2)
+                .all(|p| p[0] == p[1])
+                .then_some(types.get(0).cloned().unwrap_or("unit".to_string()))
+                .ok_or(error!("list is not homogenous"))?
+        }
+        Expr::Seq(es) => todo!(),
+        Expr::Table() => todo!(),
+        Expr::Unary { expr, .. } => ty(&expr, env)?,
+        Expr::Binary { op, lhs, rhs } => {
+            if let ("=", Expr::Identifier(a)) = (op.as_str(), lhs.as_ref()) {
+                let t = ty(&rhs, env)?;
+                env.insert(a.to_string(), t);
             }
-            match (ty(first, env)?, ty(second, env)?) {
+            match (ty(&lhs, env)?, ty(&rhs, env)?) {
                 (a, b) if a == b => a,
-                (a, b) => return Err(error!("expected {a}, found {b}").span(second.span)),
+                (a, b) => return Err(error!("expected {a}, found {b}")),
             }
         }
-        Item::Block(b) => {
+        Expr::Pattern() => todo!(),
+        Expr::Block(b) => {
             let mut env = env.clone();
             b.iter()
                 .map(|e| ty(e, &mut env))
                 .last()
-                .unwrap_or(Ok("unit"))?
+                .unwrap_or(Ok("unit".to_string()))?
         }
-        Item::Variable(_, _) => todo!(),
-        Item::If(cond, then, other) => match (ty(cond, env)?, ty(then, env)?, ty(other, env)?) {
-            ("bool", a, b) if a == b => a,
-            ("bool", a, b) if a != b => {
-                return Err(error!("expected {a}, found {b}").span(other.span))
+        Expr::Variable(_, _) => todo!(),
+        Expr::If { cond, yes, no } => {
+            match (ty(&cond, env)?.as_str(), ty(&yes, env)?, ty(&no, env)?) {
+                ("bool", a, b) if a == b => a,
+                ("bool", a, b) if a != b => return Err(error!("expected {a}, found {b}")),
+                (c, _a, _b) => return Err(error!("expected bool, found {c}")),
             }
-            (c, _a, _b) => return Err(error!("expected bool, found {c}").span(cond.span)),
-        },
+        }
+        Expr::Match { expr, arms } => "unit".to_string(),
+        Expr::Loop { body } => todo!(),
+        Expr::While { cond, body } => todo!(),
+        Expr::For { id, iter, body } => todo!(),
+        Expr::Break => todo!(),
+        Expr::Return(_) => todo!(),
+        Expr::Function {} => todo!(),
+        Expr::Type {} => todo!(),
+        Expr::Record {} => todo!(),
+        Expr::Trait {} => todo!(),
     };
 
     Ok(ty)
-}
-
-impl<'a> fmt::Debug for Expr<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let stop = self.span.start + self.span.len;
-        write!(f, "({:?} @ {}..{})", self.item, self.span.start, stop)
-    }
 }

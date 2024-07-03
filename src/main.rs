@@ -1,9 +1,7 @@
 #![warn(clippy::all)]
 
-mod ir;
 mod parse;
 mod token;
-mod wasm;
 
 use crate::{parse::*, token::*};
 use std::{
@@ -43,7 +41,7 @@ fn main() -> Result<(), Box<dyn error::Error>> {
     Ok(())
 }
 
-type Table<'a> = std::collections::HashMap<&'a str, Value>;
+type Table<'a> = std::collections::HashMap<String, Value>;
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 enum Value {
@@ -52,24 +50,27 @@ enum Value {
     Number(f64),
     Text(String),
 }
-fn eval<'a>(e: Expr<'a>, table: &mut Table<'a>) -> Result<Value, Error> {
-    let value = match e.item {
-        Item::Bool(b) => Value::Bool(b),
-        Item::Number(n) => Value::Number(n),
-        Item::Text(t) => Value::Text(t.to_string()),
-        Item::Identifier(id) => table.get(id).cloned().ok_or(error!("unbound identifier"))?,
-        Item::Unary(op, n) => match (op, n.item) {
-            ("-", Item::Number(n)) => Value::Number(-n),
-            ("not", Item::Bool(b)) => Value::Bool(!b),
+fn eval(expr: Expr, table: &mut Table) -> Result<Value, Error> {
+    let value = match expr {
+        Expr::Bool(b) => Value::Bool(b),
+        Expr::Number(n) => Value::Number(n),
+        Expr::Text(t) => Value::Text(t.to_string()),
+        Expr::Identifier(id) => table
+            .get(&id)
+            .cloned()
+            .ok_or(error!("unbound identifier"))?,
+        Expr::Unary { op, expr } => match (op.as_str(), *expr) {
+            ("-", Expr::Number(n)) => Value::Number(-n),
+            ("not", Expr::Bool(b)) => Value::Bool(!b),
             (_, n) => return Err(error!("cannot apply unary {op} to {:?}", n)),
         },
-        Item::Binary(op, a, b) => {
-            if let ("=", Item::Identifier(a), _) = (op, &a.item, &b) {
-                let value = eval(*b, table)?;
-                table.insert(a, value.clone());
+        Expr::Binary { op, lhs, rhs } => {
+            if let ("=", Expr::Identifier(lhs)) = (op.as_str(), lhs.as_ref()) {
+                let value = eval(*rhs, table)?;
+                table.insert(lhs.clone(), value.clone());
                 return Ok(value);
             }
-            match (op, eval(*a, table)?, eval(*b, table)?) {
+            match (op.as_str(), eval(*lhs, table)?, eval(*rhs, table)?) {
                 ("+", Value::Number(a), Value::Number(b)) => Value::Number(a + b),
                 ("-", Value::Number(a), Value::Number(b)) => Value::Number(a - b),
                 ("*", Value::Number(a), Value::Number(b)) => Value::Number(a * b),
@@ -86,15 +87,29 @@ fn eval<'a>(e: Expr<'a>, table: &mut Table<'a>) -> Result<Value, Error> {
                 (_, a, b) => return Err(error!("cannot apply binary {op} to {:?} and {:?}", a, b)),
             }
         }
-        Item::Block(bl) => {
+        Expr::Block(bl) => {
             let mut local = table.clone();
             bl.into_iter()
                 .map(|e| eval(e, &mut local))
                 .last()
                 .unwrap_or(Ok(Value::Unit))?
         }
-        Item::Variable(_, _) => todo!(),
-        Item::Loop() => todo!(),
+        Expr::Variable(_, _) => todo!(),
+        Expr::List(_) => todo!(),
+        Expr::Seq(_) => todo!(),
+        Expr::Table() => todo!(),
+        Expr::Pattern() => todo!(),
+        Expr::If { cond, yes, no } => todo!(),
+        Expr::Match { expr, arms } => todo!(),
+        Expr::Loop { body } => todo!(),
+        Expr::While { cond, body } => todo!(),
+        Expr::For { id, iter, body } => todo!(),
+        Expr::Break => todo!(),
+        Expr::Return(_) => todo!(),
+        Expr::Function {} => todo!(),
+        Expr::Type {} => todo!(),
+        Expr::Record {} => todo!(),
+        Expr::Trait {} => todo!(),
     };
     Ok(value)
 }
